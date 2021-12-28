@@ -137,6 +137,8 @@ class Alarm:
         self.ampm = ampm
         self.status = True  # This attribute indicates if the alarm is active or not, it will instantly be set to True(Active) when the alarm instance is activated
 
+        database.addalarmtodb(time, date, ampm, status)
+
     def __repr__(self):
         if self.status:
             return f'Alarm set for {self.time}  {self.ampm} on {self.date} is active'
@@ -179,7 +181,7 @@ class database:
     def execute_query(self, connection, query):
         cursor = connection.cursor()
         try:
-            cursor.execute(query) # This executes any query passed to it in form of string
+            cursor.execute(query, values) # This executes any query passed to it in form of string
             connection.commit()
             print("Query executed successfully")
         except Error as e: # This will print any error message if necessary
@@ -196,13 +198,22 @@ class database:
         except Error as e:
             print(f"The error '{e}' occurred")
 
-
+    def addalarmtodb(self, time, date, ampm, status, sound):
+        create_alarm = """
+        INSERT INTO 
+            alarm (time, date, ampm, status, sound)
+        VALUES
+            (?, ?, ?, ?, ?);
+        """
+        self.execute_query(self.connection, create_alarm, (time, date, ampm, status, sound))
+            
 
 if __name__ == '__main__':
 
     root = Tk()
     # Insert Class  call here
     database()
+    database.addalarmtodb("a","b","c",False)
     AlarmClockGUI(root)
     root.mainloop()
 
