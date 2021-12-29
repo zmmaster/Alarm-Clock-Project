@@ -62,6 +62,7 @@ class AlarmClockGUI:
          
         # This creates a new class instance of Alarm
         newAlarm = Alarm(time,date,ampm)
+
         print(newAlarm) 
 
         # This ensures the new alarm will be updated to the listbox
@@ -76,6 +77,7 @@ class AlarmClockGUI:
             idx = int(idxs[0])
             self.alarmNames.pop(idx)    
             self.alarms.set(self.alarmNames)
+            d.deletealarmdb()
         else: 
             # If nothing is selected, present an error message
             messagebox.showinfo(message='Please select an alarm')
@@ -136,8 +138,9 @@ class Alarm:
         self.date = date
         self.ampm = ampm
         self.status = True  # This attribute indicates if the alarm is active or not, it will instantly be set to True(Active) when the alarm instance is activated
+        self.sound = True # I need to add a way in the GUI to select sounds and add it to the add alarm method
 
-        database.addalarmtodb(time, date, ampm, status)
+        d.addalarmtodb(self.time, self.date, self.ampm, self.status, self.sound)
 
     def __repr__(self):
         if self.status:
@@ -178,7 +181,7 @@ class database:
         return connection # Retruns a conenction object, which can be used to execute queries
 
 
-    def execute_query(self, connection, query):
+    def execute_query(self, connection, query, values=()):
         cursor = connection.cursor()
         try:
             cursor.execute(query, values) # This executes any query passed to it in form of string
@@ -187,7 +190,7 @@ class database:
         except Error as e: # This will print any error message if necessary
             print(f"The error '{e}' occurred")
 
-    def execute_read_query(self, connection, query): # This function reads the passed query
+    def execute_read_query(self, connection, query, values=()): # This function reads the passed query
         cursor = connection.cursor()
         result = None
         try:
@@ -208,12 +211,18 @@ class database:
         self.execute_query(self.connection, create_alarm, (time, date, ampm, status, sound))
             
 
+    def deletealarmdb(self):
+        delete_alarm = "DELETE FROM alarm WHERE id = ?" # Create a prepared delete statement
+        reset_id = "DELETE FROM sqlite_sequence WHERE name = 'alarm';" # This didn't work, I need to fix it or maybe think about it later
+        
+        self.execute_query(self.connection, delete_alarm, ("8")) # This deletes the selected entry from the database
+        self.execute_query(self.connection, reset_id) # This resets the id counter for each alarm
 if __name__ == '__main__':
 
     root = Tk()
     # Insert Class  call here
-    database()
-    database.addalarmtodb("a","b","c",False)
+    d = database()
+    
     AlarmClockGUI(root)
     root.mainloop()
 
