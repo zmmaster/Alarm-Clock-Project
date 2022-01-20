@@ -6,7 +6,8 @@ from sqlite3 import Error
 
 # This class handles the Graphical User Interface for the alarm clock
 class AlarmClockGUI:
-    
+    alarmNames = [] 
+
     def __init__(self,root):
         
         #This block creates the main window
@@ -18,8 +19,7 @@ class AlarmClockGUI:
         root.rowconfigure(0, weight=1)
         
         # This block is to instantiate a Listbox 
-        self.alarmNames = ["Apple"]
-        self.alarms = StringVar(value=self.alarmNames)
+        self.alarms = StringVar(value=AlarmClockGUI.alarmNames)
         self.lbox = Listbox(mainframe, listvariable=self.alarms)
         self.lbox.grid(column=1, row=1,columnspan=3, rowspan= 1, sticky=(NW,NE))
 
@@ -54,6 +54,12 @@ class AlarmClockGUI:
 
         # This puts the cursor in the time entry when the window is opened
         time_entry.focus()
+    @classmethod 
+    def getAddedAlarmIndex(cls):
+        
+        addedidx = len(cls.alarmNames)
+
+        return addedidx
 
     def addAlarm(self,*args):
         """ This method retrieves the data from the GUI and instantiates an Alarm object """
@@ -69,9 +75,9 @@ class AlarmClockGUI:
         print(newAlarm) 
 
         # This ensures the new alarm will be updated to the listbox
-        self.alarmNames.append(newAlarm) 
-        self.alarms.set(self.alarmNames)
-        
+        AlarmClockGUI.alarmNames.append(newAlarm) 
+        self.alarms.set(AlarmClockGUI.alarmNames)
+         
          
     
 
@@ -81,10 +87,15 @@ class AlarmClockGUI:
         idxs = self.lbox.curselection() # This retrieves the index of the listbox 
         if len(idxs)==1: # The length will only ever be one if something is selected in the listbox 
             idx = int(idxs[0])
+            
+            # Retrieves the dbid stored in the alarm object
+            dbid = AlarmClockGUI.alarmNames[idx].dbid 
+            d.deletealarmdb(dbid)
 
-            self.alarmNames.pop(idx)    
-            self.alarms.set(self.alarmNames)
-            self.alarms.set(list(filter(None,self.alarmNames))) # The list filter is to get rid of a None type that was being returned that was undesirable    
+            AlarmClockGUI.alarmNames.pop(idx)    
+            self.alarms.set(AlarmClockGUI.alarmNames)
+            self.alarms.set(list(filter(None,AlarmClockGUI.alarmNames))) # The list filter is to get rid of a None type that was being returned that was undesirable    
+                       
         else: 
             # If nothing is selected, present an error message
             messagebox.showinfo(message='Please select an alarm')
@@ -96,9 +107,9 @@ class AlarmClockGUI:
         idxs = self.lbox.curselection()
         idx = int(idxs[0])
         
-        self.alarmNames.append(self.addAlarm()) # Appends new alarm by calling addAlarm()  method
+        AlarmClockGUI.alarmNames.append(self.addAlarm()) # Appends new alarm by calling addAlarm()  method
         self.deleteAlarm() # Deletes currently selected alarm using deleteAlarm()  method
-        self.alarms.set(list(filter(None,self.alarmNames))) # The list filter is to get rid of a None type that was being returned that was undesirable
+        self.alarms.set(list(filter(None,AlarmClockGUI.alarmNames))) # The list filter is to get rid of a None type that was being returned that was undesirable
 
     
     def editAlarmGUI(self,*args):
@@ -154,13 +165,15 @@ class Alarm:
         self.status = True  # This attribute indicates if the alarm is active or not, it will instantly be set to True(Active) when the alarm instance is activated
         self.sound = True # Currently a place holder value, I need to add a way in the GUI to select sounds from the database and correlate it to this class attribute
 
+        
         d.addalarmtodb(self.time, self.date, self.ampm, self.status, self.sound) # This method adds the new alarm to the databse upon being instantiated
-        self.id = d.getalarmid() # This retrieves the id from the database and stores it as an attribute so the alarm can later be identified
-
+        dbid = d.getalarmid()
+        self.dbid = dbid 
+    
     # This allows for control of how the alarm is displayed in the listbox
     def __repr__(self):
         if self.status:
-            return f'Alarm {self.id} set for {self.time}  {self.ampm} on {self.date} is active'
+            return f'Alarm {self.dbid} set for {self.time}  {self.ampm} on {self.date} is active'
         else:
             return f'Alarm set for {self.time}  {self.ampm} on {self.date} is inactive'
 
@@ -227,7 +240,7 @@ class database:
             return result
         except Error as e:
             print(f"The error '{e}' occurred")
-    
+      
     def getalarmid(self):
         """ This method retrieves the id given to the last entered alarm"""
 
@@ -242,7 +255,7 @@ class database:
             dbid = column[0]
             print(dbid)
 
-        return dbid
+            return dbid
 
     def addalarmtodb(self, time, date, ampm, status, sound):
         """ This adds the alarm to the database using a prepared statement"""
@@ -255,11 +268,11 @@ class database:
         """
         self.execute_query(self.connection, create_alarm, (time, date, ampm, status, sound))
             
-    def deletealarmdb(self, dbid):
+    def deletealarmdb(self, idx):
         """ Currently not working, This method deletes the alarm from the database"""
-        delete_alarm = "DELETE FROM alarm WHERE id = ?" # Create a prepared delete statement
+        delete_alarm = "DELETE FROM alarm WHERE id = (?);" # Create a prepared delete statement
                 
-        self.execute_query(self.connection, delete_alarm, (alarm.id)) # This deletes the selected entry from the database
+        self.execute_query(self.connection, delete_alarm, (idx,)) # This deletes the selected entry from the database
         
 if __name__ == '__main__':
 
