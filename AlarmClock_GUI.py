@@ -4,12 +4,111 @@ from tkinter import messagebox
 import sqlite3 
 from sqlite3 import Error
 
+""" The create_connection(), execute_query_(), and execute_read_query() methods are adapted from Real Python: https://realpython.com/python-sql-libraries/. 
+    This turtorial helped me gain an understanding of the basics of SQLite.
+"""
+# This class will handle database entry and query
+class database:
+    def __init__(self):
+        self.connection = self.create_connection("E:\\sm_app.sqlite")
+        self.create_alarm_table = """
+        CREATE TABLE IF NOT EXISTS alarm(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            time  TEXT NOT NULL,
+            date INTEGER NOT NULL,
+            ampm TEXT NOT NULL,
+            status TEXT NOT NULL,
+            sound TEXT NOT NULL
+        );
+        """
+        self.execute_query(self.connection, self.create_alarm_table)
+
+    def create_connection(self, path): 
+        """ This establishes a connection to the database and retruns it to be used by other methods"""      
+
+        connection = None
+        try:
+            connection = sqlite3.connect(path) 
+            print("Connection to SQLite DB succesful") # If the location exists a connection to the data base is established
+        except Error as e: # Otherwise the error is handled and an error message is printed
+            print(f"The error '{e}' occurred") 
+
+        return connection # Retruns a conenction object, which can be used to execute queries
+
+
+    def execute_query(self, connection, query, values=()):
+        """ This method can be used to create tables and insert records into the created tables"""
+
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query, values) # This executes any query passed to it in form of string
+            connection.commit()
+            print("Query executed successfully")
+        except Error as e: # This will print any error message if necessary
+            print(f"The error '{e}' occurred")
+
+    def execute_read_query(self, connection, query, values=()): 
+        """ This method will fetch data out of the database """
+
+        cursor = connection.cursor()
+        result = None
+        try:
+            cursor.execute(query)
+            result = cursor.fetchall()
+            print("Read query happening")
+            return result
+        except Error as e:
+            print(f"The error '{e}' occurred")
+      
+    def retrieveAlarms(self):
+        select = "SELECT * FROM alarm;"
+        alarms = self.execute_read_query(self.connection, select)
+        
+        return alarms 
+
+    def getalarmid(self):
+        """ This method retrieves the id given to the last entered alarm"""
+
+        rowsearch = """SELECT * FROM alarm
+                        ORDER BY id DESC LIMIT 1;         
+        """
+               
+        row = self.execute_read_query(self.connection, rowsearch)
+        
+        # This block iterates over the row and extracts out the id from it
+        for column in row:
+            dbid = column[0]
+            print(dbid)
+
+            return dbid
+
+    def addalarmtodb(self, time, date, ampm, status, sound):
+        """ This adds the alarm to the database using a prepared statement"""
+
+        create_alarm = """
+        INSERT INTO 
+            alarm (time, date, ampm, status, sound)
+        VALUES
+            (?, ?, ?, ?, ?);
+        """
+        self.execute_query(self.connection, create_alarm, (time, date, ampm, status, sound))
+            
+    def deletealarmdb(self, idx):
+        
+        delete_alarm = "DELETE FROM alarm WHERE id = (?);" # Create a prepared delete statement
+                
+        self.execute_query(self.connection, delete_alarm, (idx,)) # This deletes the selected entry from the database
+
+
+
 # This class handles the Graphical User Interface for the alarm clock
 class AlarmClockGUI:
     alarmNames = [] 
 
     def __init__(self,root):
         
+        
+
         #This block creates the main window
         root.title("Alarm Clock")
 
@@ -19,6 +118,7 @@ class AlarmClockGUI:
         root.rowconfigure(0, weight=1)
         
         # This block is to instantiate a Listbox 
+        AlarmClockGUI.alarmNames = d.retrieveAlarms()
         self.alarms = StringVar(value=AlarmClockGUI.alarmNames)
         self.lbox = Listbox(mainframe, listvariable=self.alarms)
         self.lbox.grid(column=1, row=1,columnspan=3, rowspan= 1, sticky=(NW,NE))
@@ -185,100 +285,14 @@ class Alarm:
     def alarmactivation(self):
         pass
 
-""" The create_connection(), execute_query_(), and execute_read_query() methods are adapted from Real Python: https://realpython.com/python-sql-libraries/. 
-    This turtorial helped me gain an understanding of the basics of SQLite.
-"""
-# This class will handle database entry and query
-class database:
-    def __init__(self):
-        self.connection = self.create_connection("E:\\sm_app.sqlite")
-        self.create_alarm_table = """
-        CREATE TABLE IF NOT EXISTS alarm(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            time  TEXT NOT NULL,
-            date INTEGER NOT NULL,
-            ampm TEXT NOT NULL,
-            status TEXT NOT NULL,
-            sound TEXT NOT NULL
-        );
-        """
-        self.execute_query(self.connection, self.create_alarm_table)
 
-    def create_connection(self, path): 
-        """ This establishes a connection to the database and retruns it to be used by other methods"""      
-
-        connection = None
-        try:
-            connection = sqlite3.connect(path) 
-            print("Connection to SQLite DB succesful") # If the location exists a connection to the data base is established
-        except Error as e: # Otherwise the error is handled and an error message is printed
-            print(f"The error '{e}' occurred") 
-
-        return connection # Retruns a conenction object, which can be used to execute queries
-
-
-    def execute_query(self, connection, query, values=()):
-        """ This method can be used to create tables and insert records into the created tables"""
-
-        cursor = connection.cursor()
-        try:
-            cursor.execute(query, values) # This executes any query passed to it in form of string
-            connection.commit()
-            print("Query executed successfully")
-        except Error as e: # This will print any error message if necessary
-            print(f"The error '{e}' occurred")
-
-    def execute_read_query(self, connection, query, values=()): 
-        """ This method will fetch data out of the database """
-
-        cursor = connection.cursor()
-        result = None
-        try:
-            cursor.execute(query)
-            result = cursor.fetchall()
-            print("Read query happening")
-            return result
-        except Error as e:
-            print(f"The error '{e}' occurred")
-      
-    def getalarmid(self):
-        """ This method retrieves the id given to the last entered alarm"""
-
-        rowsearch = """SELECT * FROM alarm
-                        ORDER BY id DESC LIMIT 1;         
-        """
-               
-        row = self.execute_read_query(self.connection, rowsearch)
-        
-        # This block iterates over the row and extracts out the id from it
-        for column in row:
-            dbid = column[0]
-            print(dbid)
-
-            return dbid
-
-    def addalarmtodb(self, time, date, ampm, status, sound):
-        """ This adds the alarm to the database using a prepared statement"""
-
-        create_alarm = """
-        INSERT INTO 
-            alarm (time, date, ampm, status, sound)
-        VALUES
-            (?, ?, ?, ?, ?);
-        """
-        self.execute_query(self.connection, create_alarm, (time, date, ampm, status, sound))
-            
-    def deletealarmdb(self, idx):
-        """ Currently not working, This method deletes the alarm from the database"""
-        delete_alarm = "DELETE FROM alarm WHERE id = (?);" # Create a prepared delete statement
-                
-        self.execute_query(self.connection, delete_alarm, (idx,)) # This deletes the selected entry from the database
-        
 if __name__ == '__main__':
+
+    d = database() # Intialize a connection to the database everytime the program is run
 
     root = Tk() # Creates a Tkinter object
     
-    d = database() # Intialize a connection to the database everytime the program is run
+    
     
     AlarmClockGUI(root)
     root.mainloop() # Enter into the event loop
